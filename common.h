@@ -12,6 +12,7 @@
 #include <sys/shm.h>
 #include <sys/sem.h>
 
+#define SERVER "server.c"
 #define FTOK_PATH "."
 #define FTOK_ID 'P'
 #define FTOK_ID_SHM 'S'
@@ -34,7 +35,7 @@ typedef struct{
 union semun {
     int val;
     struct semid_ds *buf;
-    unsigned short *array
+    unsigned short *array;
 };
 
 
