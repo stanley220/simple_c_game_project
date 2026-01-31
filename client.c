@@ -1,7 +1,7 @@
 #include "common.h"
 
 int main() {
-    key_t key = ftok("server.c", 'A');
+    key_t key = ftok("server.c", FTOK_ID);
     if (key == -1) {
         perror("ftok failed");
         exit(EXIT_FAILURE);
