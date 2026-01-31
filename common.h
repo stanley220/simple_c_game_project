@@ -20,4 +20,10 @@ typedef struct {
     char mtext[100];  
 } Message;
 
+typedef struct{
+    int resource[2];
+    int units[2][4];
+} GameState;
+
+
 #endif
