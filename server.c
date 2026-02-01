@@ -45,14 +45,19 @@ int main() {
         perror("ftok for sem failed");
         exit(EXIT_FAILURE);
     }
-    int semid = semget(sem_key, 0, 0666 | IPC_CREAT);
+    int semid = semget(sem_key, 1, 0666 | IPC_CREAT);
     if (semid == -1) {
         perror("semget failed");
         exit(EXIT_FAILURE);
     }
     printf("Semaphore created with ID: %d\n", semid);
-    semctl(semid, 0, SETVAL, 1);
+    union semun arg;
+    arg.val = 1;
 
+    if (semctl(semid, 0, SETVAL, arg) == -1){
+        perror("semctl failed");
+        exit(EXIT_FAILURE);
+    };
 
     shmdt(game_state);
     shmctl(shmid, IPC_RMID, NULL);
