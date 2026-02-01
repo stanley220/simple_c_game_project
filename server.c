@@ -1,5 +1,28 @@
 #include "common.h"
 
+void lock(int semid) {
+    struct sembuf bufor;
+    bufor.sem_num = 0;
+    bufor.sem_op = -1;
+    bufor.sem_flg = 0;
+    if (semop(semid, &bufor, 1) == -1) {
+        perror("semop lock failed");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void unlock(int semid) {
+    struct sembuf bufor;
+    bufor.sem_num = 0;
+    bufor.sem_op = 1;
+    bufor.sem_flg = 0;
+    if (semop(semid, &bufor, 1) == -1) {
+        perror("semop unlock failed");
+        exit(EXIT_FAILURE);
+    }
+}
+
+
 int main() {
 
     key_t key = ftok(SERVER, FTOK_ID);
@@ -14,9 +37,8 @@ int main() {
     }
     printf("Message queue created with ID: %d\n", msgid);
     Message msg;
-    msgrcv(msgid, &msg, sizeof(msg.mtext) + sizeof(int), MSG_LOGIN, 0);
-    printf("Received message from client %d: %s\n", msg.snd_id, msg.mtext);
-    msgctl(msgid, IPC_RMID, NULL);
+    
+    //msgctl(msgid, IPC_RMID, NULL);
 
 
     key_t shm_key = ftok(SERVER, FTOK_ID_SHM);
@@ -59,11 +81,29 @@ int main() {
         exit(EXIT_FAILURE);
     };
 
-    shmdt(game_state);
-    shmctl(shmid, IPC_RMID, NULL);
-    semctl(semid, 0, IPC_RMID);
+    //shmdt(game_state);
+    //shmctl(shmid, IPC_RMID, NULL);
+    //semctl(semid, 0, IPC_RMID);
 
-
+    pid_t pid = fork();
+    if (pid == -1) {
+        perror("fork failed");
+        exit(EXIT_FAILURE);
+    } else if (pid == 0) {
+        while (1) {
+            sleep(1);
+            lock(semid);
+            game_state->resource[0] += 10;
+            printf("Child: Player 1 resources: %d\n", game_state->resource[0]);
+            unlock(semid);
+        }
+        
+    } else {
+        while (1) {
+            msgrcv(msgid, &msg, sizeof(msg.mtext) + sizeof(int), MSG_LOGIN, 0);
+            printf("Received message from client %d: %s\n", msg.snd_id, msg.mtext);
+        }
+    }
 
     return 0;
 }
