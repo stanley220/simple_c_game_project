@@ -132,14 +132,14 @@ int main() {
                         game_state->resource[0] -= cost;
                         game_state->production_queue++;
                         game_state->units[0][type]++;
-                        strcpy(msg.mtype, "Kupiono jednostkę typu %d!", type);
+                        strcpy(msg.mtype, "Kupiono jednostkę typu %d!");
                         printf("[SERWER]: Gracz kupił jednostę %d za %d złota\n", type, cost);
                     } else {
                         strcpy(msg.mtext, "Za mało złota aby przepradzić zakup! Koszt: %d. Obecne fundusze: %d", cost, game_state->resource[0]);
                     }
                     unlock(semid);
 
-                    msg.mtype = MSG_DATA;
+                    msg.mtype = client_pid;
                     msg.data[0]=game_state->resource[0];
 
                     msgsnd(msgid, &msg, sizeof(msg) - sizeof(long), 0);
