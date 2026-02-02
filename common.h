@@ -34,6 +34,7 @@ typedef struct{
     int resource[2];
     int units[2][4];
     int connected_players;
+    int production_queue;
 } GameState;
 
 union semun {

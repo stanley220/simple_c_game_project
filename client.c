@@ -26,18 +26,19 @@ int main() {
             strcpy(msg.mtext, "Wniosek o podanie zasobów");
             msgsnd(msgid, &msg, sizeof(msg.mtext) + sizeof(int), 0);
             msgrcv(msgid, &msg, sizeof(msg.mtext) + sizeof(int), pid, 0);
-            printf("Złoto:", msg.data[0]);
+            printf("Złoto: %d\n", msg.data[0]);
         } else if (option == 2) {
             Message msg;
             msg.mtype = MSG_TRAIN;
             msg.snd_id = pid;
-            printf("Wybierz typ jednostki (1-4): \n1: Lekka piechota - 100\n2: Ciężka piechota - 250\n3: Jazda - 550\n4: Robotnicy - 100");
+            printf("Wybierz typ jednostki (1-4): \n1: Lekka piechota - 100\n2: Ciężka piechota - 250\n3: Jazda - 550\n4: Robotnicy - 100\n");
             int unit_type;
-            scanf("%d", unit_type);
+            printf("Numer typu jednostki: ");
+            scanf("%d", &unit_type);
             strcpy(msg.mtext, "Wniosek o kupienie jednostki");
-            strcpy(msg.data[0], unit_type);
+            msg.data[0] = unit_type;
             msgrcv(msgid, &msg, sizeof(msg.mtext) + sizeof(int), pid, 0);
-            printf("Złoto:", msg.data[0]);
+            printf("Złoto: %d\n", msg.data[0]);
         }
     }
 
