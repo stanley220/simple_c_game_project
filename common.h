@@ -19,10 +19,14 @@
 #define FTOK_ID_SEM 'E'
 
 #define MSG_LOGIN 1
+#define MSG_DATA 2
+#define MSG_TRAIN 3
 
 typedef struct {
     long mtype;     
-    int snd_id;   
+    int snd_id;
+    int type;
+    int data[4];   
     char mtext[100];  
 } Message;
 
@@ -30,6 +34,7 @@ typedef struct{
     int resource[2];
     int units[2][4];
     int connected_players;
+    int production_queue;
 } GameState;
 
 union semun {

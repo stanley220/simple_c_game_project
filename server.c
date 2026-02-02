@@ -25,6 +25,8 @@ void unlock(int semid) {
 
 int main() {
 
+    int unit_costs[4] = {100, 250, 500, 150};
+
     key_t key = ftok(SERVER, FTOK_ID);
     if (key == -1) {
         perror("ftok failed");
@@ -85,6 +87,8 @@ int main() {
     //shmctl(shmid, IPC_RMID, NULL);
     //semctl(semid, 0, IPC_RMID);
 
+    
+
     pid_t pid = fork();
     if (pid == -1) {
         perror("fork failed");
@@ -99,11 +103,53 @@ int main() {
         }
         
     } else {
-        while (1) {
-            msgrcv(msgid, &msg, sizeof(msg.mtext) + sizeof(int), MSG_LOGIN, 0);
-            printf("Received message from client %d: %s\n", msg.snd_id, msg.mtext);
-        }
-    }
+        while(1) {
+            Message msg;
+            if (msgrcv(msgid, &msg, sizeof(msg.mtext) + sizeof(int), 0, 0) == -1) {
+                perror("msgrcv failed");
+                exit(EXIT_FAILURE);
+            } else {
+                switch (msg.mtype) {
+                case MSG_LOGIN:
+                    printf("Received login message from %d: %s\n", msg.snd_id, msg.mtext);
+                    break;
+                case MSG_DATA:
+                    lock(semid);
+                    msg.data[0] = game_state->resource[0];
+                    unlock(semid);
+                    msg.mtype = msg.snd_id;
+                    msgsnd(msgid, &msg, sizeof(msg.mtext) + sizeof(int), 0);
+                    break;
+                case MSG_TRAIN:
+                    int type = msg.data[0];
+                    int client_pid = msg.snd_id;
+                    if (type < 0 || type > 3) {
+                        strcpy(msg.mtext, "Błąd!");
+                    }
+                    int cost = unit_costs[type];
+                    lock(semid);
+                    if (game_state->resource[0] >= cost) {
+                        game_state->resource[0] -= cost;
+                        game_state->production_queue++;
+                        game_state->units[0][type]++;
+                        strcpy(msg.mtype, "Kupiono jednostkę typu %d!", type);
+                        printf("[SERWER]: Gracz kupił jednostę %d za %d złota\n", type, cost);
+                    } else {
+                        strcpy(msg.mtext, "Za mało złota aby przepradzić zakup! Koszt: %d. Obecne fundusze: %d", cost, game_state->resource[0]);
+                    }
+                    unlock(semid);
 
+                    msg.mtype = MSG_DATA;
+                    msg.data[0]=game_state->resource[0];
+
+                    msgsnd(msgid, &msg, sizeof(msg) - sizeof(long), 0);
+                    break;
+                default:
+                    printf("Unknown message type received: %ld\n", msg.mtype);
+                    break;
+            }
+        }
+        
+    }
     return 0;
 }
