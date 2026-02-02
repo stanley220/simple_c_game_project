@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
+#include <signal.h>
 
 #define SERVER "server.c"
 #define FTOK_PATH "."
@@ -34,7 +35,9 @@ typedef struct{
     int resource[2];
     int units[2][4];
     int connected_players;
-    int production_queue;
+    int production_timer[2];
+    int units_in_queue[2];
+    int production_type[2];
 } GameState;
 
 union semun {

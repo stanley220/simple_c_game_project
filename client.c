@@ -2,61 +2,59 @@
 
 int main() {
     key_t key = ftok(SERVER, FTOK_ID);
-    if (key == -1) {
-        perror("ftok failed");
-        exit(EXIT_FAILURE);
-    }
     int msgid = msgget(key, 0666);
     if (msgid == -1) {
-        perror("msgget failed");
-        exit(EXIT_FAILURE);
+        perror("Nie moge polaczyc sie z kolejka (Uruchom najpierw serwer!)");
+        exit(1);
     }
 
     pid_t pid = getpid();
-    
     int option;
-    while(1) {
-        printf("Menu:\n1. Odśwież\n2. Kup jednostkę\nWybierz opcję: ");
-        scanf("%d", &option);
+    Message msg;
 
-        if(option == 1) {
-            Message msg;
-            msg.mtype = MSG_DATA;
+    printf("Klient uruchomiony (PID: %d)\n", pid);
+
+    while(1) {
+        printf("\nMENU:\n1. Odswiez zloto\n2. Kup jednostke\nWybierz: ");
+        if (scanf("%d", &option) != 1) {
+            while(getchar() != '\n');
+            continue;
+        }
+
+        if (option == 1) {
+            msg.mtype = 1;  
+            msg.type = MSG_DATA;   
             msg.snd_id = pid;
-            strcpy(msg.mtext, "Wniosek o podanie zasobów");
-            msgsnd(msgid, &msg, sizeof(msg.mtext) + sizeof(int), 0);
-            msgrcv(msgid, &msg, sizeof(msg.mtext) + sizeof(int), pid, 0);
-            printf("Złoto: %d\n", msg.data[0]);
-        } else if (option == 2) {
-            Message msg;
-            msg.mtype = MSG_TRAIN;
-            msg.snd_id = pid;
-            printf("Wybierz typ jednostki (1-4): \n1: Lekka piechota - 100\n2: Ciężka piechota - 250\n3: Jazda - 550\n4: Robotnicy - 100\n");
+
+            msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
+            msgrcv(msgid, &msg, sizeof(Message) - sizeof(long), pid, 0);
+            
+            printf(">>> TWOJE ZLOTO: %d <<<\n", msg.data[0]);
+        } 
+        else if (option == 2) {
             int unit_type;
-            printf("Numer typu jednostki: ");
+            printf("Wybierz typ (1-4):\n1. Lekka (100)\n2. Cieżka (250)\n3. Jazda (500)\n4. Robotnicy (150)\nWybor: ");
             scanf("%d", &unit_type);
-            msg.data[0] = unit_type-1;
-            strcpy(msg.mtext, "Wniosek o kupienie jednostki");
-            msgsnd(msgid, &msg, sizeof(msg) - sizeof(long), 0);
-            msgrcv(msgid, &msg, sizeof(msg.mtext) + sizeof(int), pid, 0);
-            printf("[SERWER]: Kupiono jednostkę typu %d", unit_type);
-            printf("Złoto: %d\n", msg.data[0]);
+
+            if (unit_type < 1 || unit_type > 4) {
+                printf("Niepoprawny typ!\n");
+                continue;
+            }
+
+            msg.mtype = 1;         
+            msg.type = MSG_TRAIN;   
+            msg.snd_id = pid;
+            msg.data[0] = unit_type - 1;
+
+            // Wyślij
+            msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
+
+            // Odbierz potwierdzenie
+            msgrcv(msgid, &msg, sizeof(Message) - sizeof(long), pid, 0);
+
+            printf("Kupiono jednostkę!\n");
+            printf("Zloto po zakupie: %d\n", msg.data[0]);
         }
     }
-
-    //    int msgid = msgget(key, 0666);
-    //    if (msgid == -1) {
-    //        perror("msgget failed");
-    //        exit(EXIT_FAILURE);
-    //  }
-    //  Message msg;
-
-    //  msg.mtype = MSG_LOGIN;
-    //  strcpy(msg.mtext, "Witam!");
-
-    //  msgsnd(msgid, &msg, sizeof(msg.mtext) + sizeof(int), 0);
-        
-
-
+    return 0;
 }
-
