@@ -35,19 +35,14 @@ int main() {
             int unit_type;
             printf("Numer typu jednostki: ");
             scanf("%d", &unit_type);
+            msg.data[0] = unit_type-1;
             strcpy(msg.mtext, "Wniosek o kupienie jednostki");
-            msg.data[0] = unit_type;
+            msgsnd(msgid, &msg, sizeof(msg) - sizeof(long), 0);
             msgrcv(msgid, &msg, sizeof(msg.mtext) + sizeof(int), pid, 0);
+            printf("[SERWER]: Kupiono jednostkę typu %d", unit_type);
             printf("Złoto: %d\n", msg.data[0]);
         }
     }
-
-
-
-
-
-
-
 
     //    int msgid = msgget(key, 0666);
     //    if (msgid == -1) {

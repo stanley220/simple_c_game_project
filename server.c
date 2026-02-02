@@ -1,5 +1,23 @@
 #include "common.h"
 
+void handle_sigint(int sig) {
+    printf("\n[SERWER] Otrzymano Ctrl+C. Sprzątam...\n");
+    
+    // Zabij proces Ekonomii (Dziecko), jeśli istnieje
+    if (child_pid > 0) {
+        kill(child_pid, SIGKILL);
+    }
+
+    // Usuń zasoby
+    msgctl(msgid, IPC_RMID, NULL);
+    shmctl(shmid, IPC_RMID, NULL);
+    semctl(semid, 0, IPC_RMID);
+
+    printf("[SERWER] Zasoby zwolnione. Do widzenia!\n");
+    exit(0);
+}
+
+
 void lock(int semid) {
     struct sembuf bufor;
     bufor.sem_num = 0;
@@ -21,7 +39,6 @@ void unlock(int semid) {
         exit(EXIT_FAILURE);
     }
 }
-
 
 int main() {
 
