@@ -30,7 +30,7 @@ int main() {
 
     int option;
     while(1) {
-        printf("\n[GRACZ %d] MENU:\n1. Sprawdź ekwipunek\n2. Kup jednostke\n3. Atak\nWybierz: ", my_id+1);
+        printf("\n[GRACZ %d] MENU:\n1. Sprawdź ekwipunek\n2. Kup jednostki\n3. Atak\nWybierz: ", my_id+1);
         if (scanf("%d", &option) != 1) {
             while(getchar() != '\n');
             continue;

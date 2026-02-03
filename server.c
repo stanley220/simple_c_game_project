@@ -57,16 +57,18 @@ void battle(GameState *gs, int attacker_id) {
     double S_B = 0;
 
     for (int i = 0; i<4; i++) {
-        S_A += gs->units[attacker_id][i];
+        S_A += gs->units[attacker_id][i] * attack_stats[i];
     }
 
     for (int i = 0; i < 4; i++) {
-        S_B += gs->units[defender_id][i];
+        S_B += gs->units[defender_id][i] * defense_stats[i];
     }
 
-    printf("[BITWA] Gracz %d atakuje gracza %d!\nSiła armii atakującej: %d\nSiła armii broniącej: %d", attacker_id, defender_id, S_A, S_B);
+    printf("[BITWA]: Gracz %d atakuje gracza %d!\nSiła armii atakującej: %.1f\nSiła armii broniącej: %.1f\n", attacker_id, defender_id, S_A, S_B);
 
     if (S_A > S_B) {
+        gs->victory_points[attacker_id]++;
+        printf("\n[KONIEC BITWY]: Gracz %d zdobył punkt! Suma jego punktów: %d\n", attacker_id+1, gs->victory_points[attacker_id]);
         for (int i = 0; i < 4; i++) {
             gs->units[defender_id][i] = 0;
         }
@@ -110,12 +112,12 @@ int main() {
     GameState *game_state = (GameState *)shmat(shmid, NULL, 0);
 
     game_state->connected_players = 0;
-    game_state->resource[0] = 300;
-    game_state->resource[1] = 300;
 
     for (int i = 0; i<2; i++) {
         game_state->production_timer[i] = 0;
         game_state->units_in_queue[i] = 0;
+        game_state->victory_points[i] = 0;
+        game_state->resource[i] = 300;
         for (int j = 0; j<4; j++) {
             game_state->units[i][j] = 0;
         }
@@ -199,7 +201,7 @@ int main() {
                     printf("[SERWER]: Logowanie PID=%d -> ID=%d\n", msg.snd_id, assigned_id);
                     break;
 
-                case MSG_DATA:
+                case MSG_DATA: {
                     int p_id = msg.player_id;
                     lock(semid);
                     if (p_id>-1 && p_id<2) {
@@ -209,8 +211,8 @@ int main() {
                     msg.mtype = msg.snd_id;
                     msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
                     break;
-
-                case MSG_TRAIN:
+                }
+                case MSG_TRAIN: {
                     int id = msg.player_id;
                     int type = msg.data[0];
                     int client_pid = msg.snd_id;
@@ -245,8 +247,8 @@ int main() {
                     }
                     msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
                     break;
-                
-                case MSG_ATTACK:
+                }
+                case MSG_ATTACK: {
                     int atc_id = msg.player_id;
                     lock(semid);
                     battle(game_state, atc_id);
@@ -259,6 +261,7 @@ int main() {
                     msg.mtype = msg.snd_id;
                     msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
                     break;
+                }
             }
         }
     }
