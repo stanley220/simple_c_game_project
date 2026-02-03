@@ -75,6 +75,9 @@ int main() {
                 printf("Niepoprawny typ!\n");
                 continue;
             }
+            msg.mtype = 1;
+            msg.snd_id = pid;
+            msg.player_id = my_id;
             msg.type = MSG_TRAIN;
             msg.data[0] = unit_type - 1;
             msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
