@@ -31,7 +31,7 @@ typedef struct {
     long mtype;     
     int snd_id;
     int type;
-    int data[4];   
+    int data[10];   
     char mtext[100];
     int player_id;  
 } Message;
