@@ -103,6 +103,7 @@ int main() {
     signal(SIGINT, handle_sigint);
 
     int unit_costs[4] = {100, 250, 500, 150};
+    int unit_times[4] = {2, 3, 5, 2};
 
     key_t key = ftok(SERVER, FTOK_ID);
     msgid = msgget(key, 0666 | IPC_CREAT);
@@ -245,10 +246,10 @@ int main() {
                         
                             game_state->units_in_queue[id]++;
                             game_state->production_type[id] = type;
-                            game_state->production_timer[id] = 3;
+                            game_state->production_timer[id] = unit_times[type];
 
                             strcpy(msg.mtext, "[SERWER]: Budowa rozpoczęta...");
-                            printf("[SERWER] Gracz kupil typ %d. Zostalo zlota: %d\n", type+1, game_state->resource[0]);
+                            printf("[SERWER] Gracz kupil typ %d. Zostalo zlota: %d\n", type+1, game_state->resource[id]);
                         } else {
                             strcpy(msg.mtext, "[SERWER]: Nie wystarczjąca ilość surowców!");
                         }

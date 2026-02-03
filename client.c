@@ -91,7 +91,8 @@ int main() {
             msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
             msgrcv(msgid, &msg, sizeof(Message) - sizeof(long), pid, 0);
             
-            printf("Raport bitewny: %s\n", msg.mtext);
+            // POPRAWKA: Zapisz wynik do bufora, zamiast wypisywać od razu
+            strcpy(last_server_msg, msg.mtext); 
         }
     }
     return 0;
