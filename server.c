@@ -61,7 +61,7 @@ int main() {
     for (int i = 0; i<2; i++) {
         game_state->production_timer[i] = 0;
         game_state->units_in_queue[i] = 0;
-        for (int j; j<4; j++) {
+        for (int j = 0; j<4; j++) {
             game_state->units[i][j] = 0;
         }
     }
@@ -165,15 +165,15 @@ int main() {
 
                     lock(semid);
                     if (id>-1 && id <2) {
-                        if (game_state->units_in_queue[0] > 0) {
+                        if (game_state->units_in_queue[id] > 0) {
                             strcpy(msg.mtext, "Kolejka zajeta!");
                         }
-                        else if (game_state->resource[0] >= cost) {
-                            game_state->resource[0] -= cost;
+                        else if (game_state->resource[id] >= cost) {
+                            game_state->resource[id] -= cost;
                         
-                            game_state->units_in_queue[0]++;
-                            game_state->production_type[0] = type;
-                            game_state->production_timer[0] = 3;
+                            game_state->units_in_queue[id]++;
+                            game_state->production_type[id] = type;
+                            game_state->production_timer[id] = 3;
 
                             strcpy(msg.mtext, "Budowa rozpoczęta...");
                             printf("[SERWER] Gracz kupil typ %d. Zostalo zlota: %d\n", type+1, game_state->resource[0]);
