@@ -22,8 +22,10 @@
 #define MSG_LOGIN 1
 #define MSG_DATA 2
 #define MSG_TRAIN 3
-#define MSG_OK 4
-#define MSG_ERR 5
+#define MSG_ATTACK 4
+#define MSG_BATTLE_END 5
+#define MSG_OK 6
+#define MSG_ERR 7
 
 typedef struct {
     long mtype;     
@@ -41,6 +43,7 @@ typedef struct{
     int production_timer[2];
     int units_in_queue[2];
     int production_type[2];
+    int victory_points[2];
 } GameState;
 
 union semun {

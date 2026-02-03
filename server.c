@@ -7,7 +7,7 @@ pid_t pid;
 int players_pids[2] = {0, 0};
 
 void handle_sigint(int sig) {
-    printf("\n[SERWER] Otrzymano Ctrl+C. Sprzątam...\n");
+    printf("\n[SERWER]: Otrzymano Ctrl+C. Sprzątam...\n");
     if (pid > 0) {
         kill(pid, SIGKILL);
     }
@@ -16,7 +16,7 @@ void handle_sigint(int sig) {
     if (shmctl(shmid, IPC_RMID, NULL) == -1) perror("shmctl remove failed");
     if (semctl(semid, 0, IPC_RMID) == -1) perror("semctl remove failed");
 
-    printf("[SERWER] Zasoby zwolnione. Do widzenia!\n");
+    printf("[SERWER]: Zasoby zwolnione. Do widzenia!\n");
     exit(0);
 }
 
@@ -41,6 +41,61 @@ void unlock(int semid) {
         exit(EXIT_FAILURE);
     }
 }
+
+void battle(GameState *gs, int attacker_id) {
+    int defender_id;
+    if (attacker_id == 0) {
+        defender_id = 1;
+    } else {
+        defender_id = 0;
+    }
+
+    float attack_stats[4] = {1.0, 1.5, 3.5, 0.0};
+    float defense_stats[4] = {1.2, 3.0, 1.2, 0.0};
+
+    double S_A = 0;
+    double S_B = 0;
+
+    for (int i = 0; i<4; i++) {
+        S_A += gs->units[attacker_id][i];
+    }
+
+    for (int i = 0; i < 4; i++) {
+        S_B += gs->units[defender_id][i];
+    }
+
+    printf("[BITWA] Gracz %d atakuje gracza %d!\nSiła armii atakującej: %d\nSiła armii broniącej: %d", attacker_id, defender_id, S_A, S_B);
+
+    if (S_A > S_B) {
+        for (int i = 0; i < 4; i++) {
+            gs->units[defender_id][i] = 0;
+        }
+    } else {
+        // x*(sa/sb)
+        if (S_B > 0) {
+            for (int i=0; i<4; i++) {
+                int lost = (int)(gs->units[defender_id][i]*(S_A/S_B));
+                gs->units[defender_id][i]-=lost;
+                if (gs->units[defender_id][i]<0) {
+                    gs->units[defender_id][i] = 0;
+                }
+            }
+        }
+    }
+
+    if (S_A > 0) {
+        for(int i = 0; i<4; i++) {
+            int lost = (int)(gs->units[attacker_id][i]*(S_B/S_A));
+            gs->units[attacker_id][i] -= lost;
+            if(gs->units[attacker_id][i] < 0) {
+                gs->units[attacker_id][i] = 0;
+            }
+        }
+    }
+}
+
+
+
 
 int main() {
     signal(SIGINT, handle_sigint);
@@ -84,7 +139,8 @@ int main() {
             lock(semid);
             
             for (int i = 0; i < 2; i++) { 
-                game_state->resource[i] += 50;
+                int workers = game_state->units[i][3];
+                game_state->resource[i] += 50 + (workers*5);
                 
                 if (game_state->units_in_queue[i] > 0) {
                     
@@ -134,13 +190,13 @@ int main() {
                     msg.mtype = msg.snd_id;
                     msg.player_id = assigned_id;
                     if (assigned_id != -1) {
-                        strcpy(msg.mtext, "Witaj w grze!");
+                        strcpy(msg.mtext, "[SERWER]: Witaj w grze!");
                     } else {
-                        strcpy(msg.mtext, "Serwer pełny!");
+                        strcpy(msg.mtext, "[SERWER]: Serwer pełny!");
                     }
 
                     msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
-                    printf("[SERWER] Logowanie PID=%d -> ID=%d\n", msg.snd_id, assigned_id);
+                    printf("[SERWER]: Logowanie PID=%d -> ID=%d\n", msg.snd_id, assigned_id);
                     break;
 
                 case MSG_DATA:
@@ -166,7 +222,7 @@ int main() {
                     lock(semid);
                     if (id>-1 && id <2) {
                         if (game_state->units_in_queue[id] > 0) {
-                            strcpy(msg.mtext, "Kolejka zajeta!");
+                            strcpy(msg.mtext, "[SERWER]: Kolejka zajeta!");
                         }
                         else if (game_state->resource[id] >= cost) {
                             game_state->resource[id] -= cost;
@@ -175,18 +231,32 @@ int main() {
                             game_state->production_type[id] = type;
                             game_state->production_timer[id] = 3;
 
-                            strcpy(msg.mtext, "Budowa rozpoczęta...");
+                            strcpy(msg.mtext, "[SERWER]: Budowa rozpoczęta...");
                             printf("[SERWER] Gracz kupil typ %d. Zostalo zlota: %d\n", type+1, game_state->resource[0]);
                         } else {
-                            strcpy(msg.mtext, "Nie wystarczjąca ilość surowców!");
+                            strcpy(msg.mtext, "[SERWER]: Nie wystarczjąca ilość surowców!");
                         }
                     }
                     unlock(semid);
 
                     msg.mtype = client_pid;
                     if (id>-1 && id <2) {
-                        msg.data[0] = game_state->resource[0];
+                        msg.data[0] = game_state->resource[id];
                     }
+                    msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
+                    break;
+                
+                case MSG_ATTACK:
+                    int atc_id = msg.player_id;
+                    lock(semid);
+                    battle(game_state, atc_id);
+                    if (game_state->victory_points[atc_id]>=5) {
+                        strcpy(msg.mtext, "[SERWER]: KONIEC GRY!");
+                    } else {
+                        strcpy(msg.mtext, "[SERWER]: Atak zakończony.");
+                    }
+                    unlock(semid);
+                    msg.mtype = msg.snd_id;
                     msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
                     break;
             }

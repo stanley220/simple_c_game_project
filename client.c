@@ -30,7 +30,7 @@ int main() {
 
     int option;
     while(1) {
-        printf("\n[GRACZ %d] MENU:\n1. Sprawdź ekwipunek\n2. Kup jednostke\nWybierz: ", my_id+1);
+        printf("\n[GRACZ %d] MENU:\n1. Sprawdź ekwipunek\n2. Kup jednostke\n3. Atak\nWybierz: ", my_id+1);
         if (scanf("%d", &option) != 1) {
             while(getchar() != '\n');
             continue;
@@ -62,6 +62,17 @@ int main() {
 
             printf("Serwer: %s\n", msg.mtext);
             printf("Surowce po zakupie: %d\n", msg.data[0]);
+        }
+        else if (option == 3 ) {
+            msg.mtype = 1;
+            msg.snd_id = pid;
+            msg.type = MSG_ATTACK;
+            msg.player_id = my_id;
+
+            msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
+            msgrcv(msgid, &msg, sizeof(Message) - sizeof(long), pid, 0);
+            
+            printf("Raport bitewny: %s\n", msg.mtext);
         }
     }
     return 0;
