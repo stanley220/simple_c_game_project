@@ -4,6 +4,7 @@ int msgid;
 int shmid;
 int semid;
 pid_t pid;
+int players_pids[2] = {0, 0};
 
 void handle_sigint(int sig) {
     printf("\n[SERWER] Otrzymano Ctrl+C. Sprzątam...\n");
@@ -18,7 +19,6 @@ void handle_sigint(int sig) {
     printf("[SERWER] Zasoby zwolnione. Do widzenia!\n");
     exit(0);
 }
-
 
 void lock(int semid) {
     struct sembuf bufor;
@@ -48,37 +48,31 @@ int main() {
     int unit_costs[4] = {100, 250, 500, 150};
 
     key_t key = ftok(SERVER, FTOK_ID);
-    if (key == -1) { perror("ftok failed"); exit(1); }
-    
     msgid = msgget(key, 0666 | IPC_CREAT);
-    if (msgid == -1) { perror("msgget failed"); exit(1); }
-    printf("Kolejka utworzona ID: %d\n", msgid);
-
+    
     key_t shm_key = ftok(SERVER, FTOK_ID_SHM);
-    if (shm_key == -1) { perror("ftok shm failed"); exit(1); }
-
     shmid = shmget(shm_key, sizeof(GameState), 0666 | IPC_CREAT);
-    if (shmid == -1) { perror("shmget failed"); exit(1); }
-
     GameState *game_state = (GameState *)shmat(shmid, NULL, 0);
-    if (game_state == (void *)-1) { perror("shmat failed"); exit(1); }
 
     game_state->connected_players = 0;
-    game_state->resource[0] = 1000;
-    game_state->production_timer[0] = 0;
-    game_state->production_timer[1] = 0;
+    game_state->resource[0] = 300;
+    game_state->resource[1] = 300;
+
+    for (int i = 0; i<2; i++) {
+        game_state->production_timer[i] = 0;
+        game_state->units_in_queue[i] = 0;
+        for (int j; j<4; j++) {
+            game_state->units[i][j] = 0;
+        }
+    }
 
     for(int i=0; i<4; i++) game_state->units[0][i] = 0;
 
     key_t sem_key = ftok(SERVER, FTOK_ID_SEM);
-    if (sem_key == -1) { perror("ftok sem failed"); exit(1); }
-
     semid = semget(sem_key, 1, 0666 | IPC_CREAT);
-    if (semid == -1) { perror("semget failed"); exit(1); }
-
     union semun arg;
     arg.val = 1;
-    if (semctl(semid, 0, SETVAL, arg) == -1) { perror("semctl failed"); exit(1); }
+    semctl(semid, 0, SETVAL, arg);
 
     printf("Serwer gotowy. Ctrl+C aby zakończyć.\n");
 
@@ -88,17 +82,23 @@ int main() {
         while (1) {
             sleep(1);
             lock(semid);
-            if (int i = 0; i<2; i++) {
-                game_state->resource[i] += 5;
-                // printf("[EKONOMIA] Surowce: %d\n", game_state->resource[0]);
+            
+            for (int i = 0; i < 2; i++) { 
+                game_state->resource[i] += 50;
+                
                 if (game_state->units_in_queue[i] > 0) {
-                    production_timer[i]--;
-                    if (production_timer[i] <= 0) {
+                    
+                    game_state->production_timer[i]--;
+                    
+                    if (game_state->production_timer[i] <= 0) {
                         int type = game_state->production_type[i];
-                        units[i][type]++;
+                        
+                        game_state->units[i][type]++; 
                         game_state->units_in_queue[i]--;
-                        production_timer[i] = 3;
-                        printf("[SERWER]: Gracz %d wyprodukował jednostkę typu: %d", i, type);
+                        
+                        game_state->production_timer[i] = 0; 
+                        
+                        printf("[SERWER]: Gracz %d wyprodukował jednostkę typu: %d\n", i+1, type+1);
                     }
                 } 
             }
@@ -112,38 +112,81 @@ int main() {
                 continue;
             }
 
-            switch (msg.type) { 
-                case MSG_DATA:
+            switch (msg.type) {
+                case MSG_LOGIN:
                     lock(semid);
-                    msg.data[0] = game_state->resource[0];
+                    int assigned_id = -1;
+                    if(players_pids[0]==msg.snd_id) {
+                        assigned_id = 0;
+                    } else if (players_pids[1]==msg.snd_id) {
+                        assigned_id = 1;
+                    } else {
+                        if (players_pids[0]==0) {
+                            players_pids[0] = msg.snd_id;
+                            assigned_id = 0;
+                        } else if (players_pids[1]==0) {
+                            players_pids[1] = msg.snd_id;
+                            assigned_id = 1;
+                        }
+                    }
                     unlock(semid);
-                    
+
+                    msg.mtype = msg.snd_id;
+                    msg.player_id = assigned_id;
+                    if (assigned_id != -1) {
+                        strcpy(msg.mtext, "Witaj w grze!");
+                    } else {
+                        strcpy(msg.mtext, "Serwer pełny!");
+                    }
+
+                    msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
+                    printf("[SERWER] Logowanie PID=%d -> ID=%d\n", msg.snd_id, assigned_id);
+                    break;
+
+                case MSG_DATA:
+                    int p_id = msg.player_id;
+                    lock(semid);
+                    if (p_id>-1 && p_id<2) {
+                        msg.data[0] = game_state->resource[p_id];
+                    }
+                    unlock(semid);
                     msg.mtype = msg.snd_id;
                     msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
                     break;
 
                 case MSG_TRAIN:
+                    int id = msg.player_id;
                     int type = msg.data[0];
                     int client_pid = msg.snd_id;
+                    
+                    if (type < 0 || type > 3) break; 
+                    
                     int cost = unit_costs[type];
 
                     lock(semid);
-                    if (game_state->resource[0] >= cost) {
-                        game_state->resource[0] -= cost;
-                        game_state->units_in_queue++;
-                        game_state->production_type = type;
-                        game_state->units[0][type]++;
-
+                    if (id>-1 && id <2) {
+                        if (game_state->units_in_queue[0] > 0) {
+                            strcpy(msg.mtext, "Kolejka zajeta!");
+                        }
+                        else if (game_state->resource[0] >= cost) {
+                            game_state->resource[0] -= cost;
                         
-                        sprintf(msg.mtext, "Kupiono jednostke typ %d!", type);
-                        printf("[SERWER] Gracz kupil typ %d. Zostalo zlota: %d\n", type, game_state->resource[0]);
-                    } else {
-                        sprintf(msg.mtext, "Brak zlota! Koszt: %d", cost);
+                            game_state->units_in_queue[0]++;
+                            game_state->production_type[0] = type;
+                            game_state->production_timer[0] = 3;
+
+                            strcpy(msg.mtext, "Budowa rozpoczęta...");
+                            printf("[SERWER] Gracz kupil typ %d. Zostalo zlota: %d\n", type+1, game_state->resource[0]);
+                        } else {
+                            strcpy(msg.mtext, "Nie wystarczjąca ilość surowców!");
+                        }
                     }
                     unlock(semid);
 
                     msg.mtype = client_pid;
-                    msg.data[0] = game_state->resource[0];
+                    if (id>-1 && id <2) {
+                        msg.data[0] = game_state->resource[0];
+                    }
                     msgsnd(msgid, &msg, sizeof(Message) - sizeof(long), 0);
                     break;
             }

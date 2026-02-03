@@ -22,13 +22,16 @@
 #define MSG_LOGIN 1
 #define MSG_DATA 2
 #define MSG_TRAIN 3
+#define MSG_OK 4
+#define MSG_ERR 5
 
 typedef struct {
     long mtype;     
     int snd_id;
     int type;
     int data[4];   
-    char mtext[100];  
+    char mtext[100];
+    int player_id;  
 } Message;
 
 typedef struct{
