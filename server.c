@@ -206,13 +206,20 @@ int main() {
                     lock(semid);
                     if (p_id>-1 && p_id<2) {
                         msg.data[0] = game_state->resource[p_id];
-
                         msg.data[1] = game_state->units[p_id][0];
                         msg.data[2] = game_state->units[p_id][1];
                         msg.data[3] = game_state->units[p_id][2];
                         msg.data[4] = game_state->units[p_id][3];
-
                         msg.data[5] = game_state->victory_points[p_id];
+
+                        printf("[STATUS] Gracz %d | Złoto: %d | Armia: [L:%d] [C:%d] [J:%d] [R:%d]\n", 
+                               p_id, 
+                               msg.data[0], 
+                               msg.data[1],
+                               msg.data[2],
+                               msg.data[3], 
+                               msg.data[4]  
+                        );
                     }
                     unlock(semid);
                     msg.mtype = msg.snd_id;

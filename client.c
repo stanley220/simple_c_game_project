@@ -53,7 +53,7 @@ int main() {
         printf("  [4] Robotnicy:       %d\n", msg.data[4]);
         printf("=========================================\n");
 
-        printf(" OSTATNI KOMUNIKAT: %s\n", last_server_msg); // <--- NOWE
+        printf(" OSTATNI KOMUNIKAT: %s\n", last_server_msg);
         printf("=========================================\n");
         
         printf("AKCJE:\n1. Odśwież (Pobierz stan)\n2. Kup jednostkę\n3. Atakuj\n");
